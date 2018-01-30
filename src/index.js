@@ -1,61 +1,315 @@
-import React from 'react';
-import ReactDOM from 'react-dom';
-import './index.css';
-import registerServiceWorker from './registerServiceWorker';
+import React from "react";
+import ReactDOM from "react-dom";
+import "./index.css";
+import registerServiceWorker from "./registerServiceWorker";
+import { Segment, Grid, Card, Container, Image, Message, Button, List, Form, Comment } from "semantic-ui-react";
 
 // https://medium.com/@coderacademy/you-can-build-an-fb-messenger-style-chat-app-with-reactjs-heres-how-intermediate-211b523838ad
 
-class ChatRoom extends React.Component{
-    on_send(message){
 
+class Login extends React.Component{
+  constructor(props) {
+    super(props);
+    this.state = {name:this.props.name,icon:"",chatname:this.props.chatname, message:true};
+    this.on_login = this.on_login.bind(this);
+    this.handleChange = this.handleChange.bind(this);
+  }
+  handleChange = (e) => this.setState({ [e.target.name]: e.target.value })
+  on_login(){
+    console.log(typeof(this.state.name));
+    if (this.state.name=== ""){
+      this.state.message = false;
+      this.forceUpdate();
+      return;
     }
-    render() {
-        return (
-          <div className="container">
-            {/* <Messages messages={this.state.messages} /> */}
-            <ChatInput/>   
-            {/* <Members members={this.state.members} />          */}
-          </div>
-        );
-      }
+    if (this.state.icon === ""){    
+      this.state.icon = this.props.icon;
+      this.forceUpdate();
+    }
+    if (this.state.chatname === ""){    
+      this.state.message = false;
+      this.forceUpdate();
+      return; 
+    }
+    this.props.on_login(this.state.name, this.state.icon, this.state.chatname);
+  }
+  render(){
+    const { name, icon, chatname } = this.state;
+    return (
+      <div class="ui middle aligned center aligned grid">
+      <div class="column">
+      <h2 class="ui teal image header">
+      <div class="content">
+        Create your username and avatar
+      </div>
+    </h2>
+      <Form id ="loginscreen" onSubmit={this.on_login} >
+    <Form.Field>
+      <input placeholder='Name' name='name' value={name} onChange={this.handleChange} />
+    </Form.Field>
+    <Form.Field>
+      <input placeholder='paste a link to your avatar' name='icon' value={icon} onChange={this.handleChange}/>
+    </Form.Field>
+    <Image src={this.state.icon} />
+    <Form.Field>
+      <input placeholder='Enter the chatname' name='chatname' value={chatname} onChange={this.handleChange}/>
+    </Form.Field>    
+    <Button large type='submit'  >Submit</Button>
+    </Form>
+    <Message hidden={this.state.message}>   
+    One or more of your fields is empty. Please check again!    
+  </Message>    
+      </div>
+    </div>
+    )
+  }
 }
 
-class ChatInput extends React.Component {
-    constructor(props) {
-        super(props);
-        // Set initial state of the message
-        this.state = { message: '' };
-        // React ES6 does not bind 'this' to event handlers by default
-        this.on_submit = this.on_submit.bind(this);
-        this.on_type = this.on_type.bind(this);
-      }
-      
-    // when submit the form
-    on_submit(event){
-        event.preventDefault();
-        this.setState({message:""});
-    }
+class ChatRoom extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { messages: [], name:"",icon:"https://semantic-ui.com/images/avatar/large/daniel.jpg", chatname:"", loggedin: false};
+    this.send_message = this.send_message.bind(this);
+    this.login = this.login.bind(this);
+    this.add_message = this.add_message.bind(this);
+    this.logout = this.logout.bind(this);
+  }
 
-    // when a user is typing
-    on_type(event){
-        this.setState({message:event.target.value});
-    }
+  // send a message to the server
+  send_message(message) {
+    const a_message = {};
+    a_message.clientTime = Date.now();
+    a_message.message = message;
+    a_message.iconUrl = this.state.icon;
+    const topic_to_send = "root/" + this.state.chatname + "/"+ this.state.name;
+    this.client.publish(topic_to_send, JSON.stringify(a_message));
+ 
+  }
 
-    render() {
+  // add a message to the list of message
+  add_message(username, message) {
+    console.log(username,message);
+    const messages = this.state.messages;
+    messages.push([username,message]);
+    this.state.messages = messages;
+    this.forceUpdate();
+  }
+
+  // Upon user login, connect to the mqtt client
+  login(yourname, youricon, yourchatname){
+    this.state.name = yourname;
+    this.state.icon = youricon;
+    this.state.chatname = yourchatname;
+    var mqtt = require('mqtt')
+    var client  = mqtt.connect('ws://mqtt.bucknell.edu:9001')
+    var parent = this;
+    client.on('connect', function () {
+      client.subscribe("root/" + yourchatname + "/+");
+      console.log("root/" + yourchatname);
+    })
+    client.on('message', function (topic, message) {
+    // message is Buffer
+    const a_mess = message.toString();
+    parent.add_message(topic, JSON.parse(a_mess));
+  })
+    this.client = client;
+    this.state.loggedin = true;
+    this.forceUpdate();
+  }
+
+  logout (){
+    console.log("out");
+    this.state.messages = [];
+    this.state.loggedin = false;
+    this.client.unsubscribe("root/" + this.state.chatname + "/+");
+    this.forceUpdate();
+  }
+
+  // The render function
+  render() {
+    if (this.state.loggedin === false){
       return (
-        <section id="message_box">
-        <form className = "chat-input" onSubmit = {this.on_submit}>
-          <input type= "text" 
-            onChange = {this.on_type}
-            id="message_sender" 
-            value = {this.state.message}
-            placeholder = "Your message..."
-          />
-        <button>Send</button>
-        </form>
-      </section>
+        <Grid>
+        <Grid.Column width={6}>
+        </Grid.Column>
+        <Grid.Column width={4}>
+        <Login on_login = {this.login} name = {this.state.name} icon = {this.state.icon} chatname = {this.state.chatname}/>
+        </Grid.Column>
+          <Grid.Column width={6}>
+          </Grid.Column>
+          </Grid>
+      )
+    }
+    else{
+      return (        
+        <Grid>
+         <Grid.Column width={3}>     
+        </Grid.Column>
+        <Grid.Column width={2}>
+          <User icon={this.state.icon} name = {this.state.name} chatname={this.state.chatname} on_logout={this.logout} />
+        </Grid.Column>
+        <Grid.Column width={8}>
+          <Messages messages={this.state.messages} />
+          <ChatInput on_send={this.send_message} />
+          </Grid.Column>
+          <Grid.Column width={3}>
+    
+        </Grid.Column>
+          </Grid>
       );
     }
   }
-ReactDOM.render(<ChatRoom/>, document.getElementById('root'));
+}
+
+class User extends React.Component{
+   render() {
+    return (
+    <Card>
+    <Image src={this.props.icon} />
+    <Card.Content>
+      <Card.Header>
+        {this.props.name}
+      </Card.Header>
+      <Card.Meta>
+        <span className='chatroom'>
+          {this.props.chatname}
+        </span>
+      </Card.Meta>      
+    </Card.Content>
+    <Card.Content extra>
+    <Button
+            content='Logout'
+            onClick={this.props.on_logout}
+          />
+    </Card.Content>
+    </Card>
+    );
+  }
+}
+
+// class MemberList extends React.Component{
+//  render() {
+//     const members = this.props.members.map((member, i) => {
+//       return (
+//         <Amember
+//           username={member.username}
+//           icon={member.icon}
+//         />
+//       );
+//     });
+//     return (
+//       <List divided relaxed>
+//         {members}
+//       </List>
+//     );
+//   }
+// }
+
+// MemberList.defaultProps = {
+//   members: []
+// };
+
+// // A Member
+// class Amember extends React.Component {
+//   render() {
+//     return (
+//       <List.Item icon={this.props.icon} content={this.props.username} />
+//     );
+//   }
+// }
+
+
+// All message
+class Messages extends React.Component {
+  componentDidUpdate() {
+    // There is a new message in the state, scroll to bottom of list
+    const objDiv = document.getElementById("messageList");
+    objDiv.scrollTop = objDiv.scrollHeight;
+  }
+
+  render() {
+    const messages = this.props.messages.map((message, i) => {
+      return (
+        <AMessage
+          key={i}
+          username={message[0]}
+          clientTime ={message[1].clientTime}
+          message={message[1].message}
+          icon={message[1].iconUrl}
+        />
+      );
+    });
+    return (
+      <Segment>
+       <Comment.Group size = "small" id = "messageList">
+        {messages}
+        </Comment.Group>
+        </Segment>
+    );
+  }
+}
+
+Messages.defaultProps = {
+  messages: []
+};
+
+// A single message
+class AMessage extends React.Component {
+  render() {
+    const self = this.props.self ? "self" : "";
+    var moment = require('moment');
+    const date = moment(this.props.clientTime).format('MMMM Do YYYY, h:mm:ss a');
+    const un = this.props.username.split('/').pop();
+    return (
+      <Comment>
+        <Comment.Avatar src= {this.props.icon} />
+        <Comment.Content>
+          <Comment.Author as="a">{un}</Comment.Author>
+          <Comment.Metadata>
+            <div>{date}</div>
+          </Comment.Metadata>
+          <Comment.Text>{this.props.message}</Comment.Text>
+        </Comment.Content>
+      </Comment>
+    );
+  }
+}
+
+// The input box
+class ChatInput extends React.Component {
+  constructor(props) {
+    super(props);
+    // Set initial state of the message
+    this.state = { message: "" };
+    // React ES6 does not bind 'this' to event handlers by default
+    this.on_submit = this.on_submit.bind(this);
+    this.on_type = this.on_type.bind(this);
+  }
+
+  // when submit the form
+  on_submit(event) {
+    event.preventDefault();
+    this.props.on_send(this.state.message);
+    this.setState({ message: "" });
+  }
+
+  // when a user is typing
+  on_type(event) {
+    this.setState({ message: event.target.value });
+  }
+
+  render() {
+    return (
+      <Form onSubmit={this.on_submit}>
+          <Form.Input
+            placeholder="Type a messenger and press Enter"
+            name="message"
+            value={this.state.message}
+            onChange={this.on_type}
+          />
+      </Form>
+    );
+  }
+}
+ReactDOM.render(<ChatRoom />, document.getElementById("root"));
 registerServiceWorker();
