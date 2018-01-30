@@ -1,6 +1,9 @@
 {
   "name": "webstack-chatbox",
   "version": "0.1.0",
+  "engines": {
+    "node": "8.9.4"
+  },
   "private": true,
   "dependencies": {
     "moment": "^2.20.1",
@@ -11,10 +14,10 @@
     "semantic-ui": "^2.2.13",
     "semantic-ui-react": "^0.77.2"
   },
-  "scripts": {  
+  "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test --env=jsdom",
     "eject": "react-scripts eject"
-  } 
+  }
 }
