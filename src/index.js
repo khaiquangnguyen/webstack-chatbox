@@ -2,7 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom";
 import "./index.css";
 import registerServiceWorker from "./registerServiceWorker";
-import { Segment, Grid, Card, Container, Image, Message, Button, List, Form, Comment } from "semantic-ui-react";
+import { Segment, Grid, Card, Image, Message, Button, Form, Comment } from "semantic-ui-react";
 
 // https://medium.com/@coderacademy/you-can-build-an-fb-messenger-style-chat-app-with-reactjs-heres-how-intermediate-211b523838ad
 
@@ -15,23 +15,21 @@ class Login extends React.Component{
     this.handleChange = this.handleChange.bind(this);
   }
   handleChange = (e) => this.setState({ [e.target.name]: e.target.value })
-  on_login(){
-    console.log(typeof(this.state.name));
+  on_login(){  
     if (this.state.name=== ""){
-      this.state.message = false;
-      this.forceUpdate();
+      this.setState({message:false});
       return;
-    }
-    if (this.state.icon === ""){    
-      this.state.icon = this.props.icon;
-      this.forceUpdate();
-    }
-    if (this.state.chatname === ""){    
-      this.state.message = false;
-      this.forceUpdate();
+    }   
+    else if (this.state.chatname === ""){    
+      this.setState({message:false});
       return; 
+    }   
+    else if (this.state.icon === ""){        
+      this.props.on_login(this.state.name, this.props.icon, this.state.chatname);
     }
-    this.props.on_login(this.state.name, this.state.icon, this.state.chatname);
+    else{
+      this.props.on_login(this.state.name, this.state.icon, this.state.chatname);
+    }    
   }
   render(){
     const { name, icon, chatname } = this.state;
@@ -48,7 +46,7 @@ class Login extends React.Component{
       <input placeholder='Name' name='name' value={name} onChange={this.handleChange} />
     </Form.Field>
     <Form.Field>
-      <input placeholder='paste a link to your avatar' name='icon' value={icon} onChange={this.handleChange}/>
+      <input placeholder='Paste a link to your avatar. Otherwise will use the default' name='icon' value={icon} onChange={this.handleChange}/>
     </Form.Field>
     <Image src={this.state.icon} />
     <Form.Field>
@@ -87,19 +85,24 @@ class ChatRoom extends React.Component {
   }
 
   // add a message to the list of message
-  add_message(username, message) {
-    console.log(username,message);
-    const messages = this.state.messages;
-    messages.push([username,message]);
-    this.state.messages = messages;
-    this.forceUpdate();
+  add_message(username, message) {   
+    if (username.split('/').pop() === this.state.name){
+      const messages = this.state.messages;
+      messages.push([username,message,true]); 
+      this.setState({messages:messages});
+    }
+    else{
+      const messages = this.state.messages;
+       messages.push([username,message,false]); 
+       this.setState({messages:messages});
+    }
   }
 
   // Upon user login, connect to the mqtt client
   login(yourname, youricon, yourchatname){
-    this.state.name = yourname;
-    this.state.icon = youricon;
-    this.state.chatname = yourchatname;
+    this.setState({name:yourname});
+    this.setState({icon:youricon});
+    this.setState({chatname:yourchatname});
     var mqtt = require('mqtt')
     var client  = mqtt.connect('ws://mqtt.bucknell.edu:9001')
     var parent = this;
@@ -113,14 +116,14 @@ class ChatRoom extends React.Component {
     parent.add_message(topic, JSON.parse(a_mess));
   })
     this.client = client;
-    this.state.loggedin = true;
+    this.setState({loggedin:true});
     this.forceUpdate();
   }
 
   logout (){
     console.log("out");
-    this.state.messages = [];
-    this.state.loggedin = false;
+    this.setState({messages:[]});
+    this.setState({loggedin:false});
     this.client.unsubscribe("root/" + this.state.chatname + "/+");
     this.forceUpdate();
   }
@@ -141,21 +144,22 @@ class ChatRoom extends React.Component {
       )
     }
     else{
-      return (        
+      return (            
+      
         <Grid>
          <Grid.Column width={3}>     
         </Grid.Column>
         <Grid.Column width={2}>
           <User icon={this.state.icon} name = {this.state.name} chatname={this.state.chatname} on_logout={this.logout} />
         </Grid.Column>
-        <Grid.Column width={8}>
+        <Grid.Column width={8}>      
           <Messages messages={this.state.messages} />
           <ChatInput on_send={this.send_message} />
           </Grid.Column>
-          <Grid.Column width={3}>
-    
+          <Grid.Column width={3}>    
         </Grid.Column>
           </Grid>
+         
       );
     }
   }
@@ -187,38 +191,6 @@ class User extends React.Component{
   }
 }
 
-// class MemberList extends React.Component{
-//  render() {
-//     const members = this.props.members.map((member, i) => {
-//       return (
-//         <Amember
-//           username={member.username}
-//           icon={member.icon}
-//         />
-//       );
-//     });
-//     return (
-//       <List divided relaxed>
-//         {members}
-//       </List>
-//     );
-//   }
-// }
-
-// MemberList.defaultProps = {
-//   members: []
-// };
-
-// // A Member
-// class Amember extends React.Component {
-//   render() {
-//     return (
-//       <List.Item icon={this.props.icon} content={this.props.username} />
-//     );
-//   }
-// }
-
-
 // All message
 class Messages extends React.Component {
   componentDidUpdate() {
@@ -236,12 +208,13 @@ class Messages extends React.Component {
           clientTime ={message[1].clientTime}
           message={message[1].message}
           icon={message[1].iconUrl}
+          self={message[2]}
         />
       );
     });
     return (
       <Segment>
-       <Comment.Group size = "small" id = "messageList">
+       <Comment.Group size = "large" id = "messageList">
         {messages}
         </Comment.Group>
         </Segment>
@@ -256,11 +229,13 @@ Messages.defaultProps = {
 // A single message
 class AMessage extends React.Component {
   render() {
-    const self = this.props.self ? "self" : "";
     var moment = require('moment');
     const date = moment(this.props.clientTime).format('MMMM Do YYYY, h:mm:ss a');
     const un = this.props.username.split('/').pop();
+    const self = this.props.self? "self":"";
+    console.log(this.props.self);
     return (
+      <div  className = {self}>
       <Comment>
         <Comment.Avatar src= {this.props.icon} />
         <Comment.Content>
@@ -271,6 +246,7 @@ class AMessage extends React.Component {
           <Comment.Text>{this.props.message}</Comment.Text>
         </Comment.Content>
       </Comment>
+      </div>
     );
   }
 }
@@ -300,7 +276,7 @@ class ChatInput extends React.Component {
 
   render() {
     return (
-      <Form onSubmit={this.on_submit}>
+      <Form size = "large" onSubmit={this.on_submit}>
           <Form.Input
             placeholder="Type a messenger and press Enter"
             name="message"
