@@ -18,7 +18,7 @@ export default class MessagesView extends React.Component {
                     key={i}
                     username={message[0]}
                     clientTime={message[1].clientTime}
-                    message={message[1].message}
+                    message={message[1].message.replace(/<(?:.|\n)*?>/gm, '')}
                     icon={message[1].iconUrl}
                     self={message[2]}
                 />
