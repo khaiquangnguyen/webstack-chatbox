@@ -1,134 +1,91 @@
 import React from "react";
 import ReactDOM from "react-dom";
 import "./index.css";
+import LoginView from './LoginView';
 import registerServiceWorker from "./registerServiceWorker";
-import { Segment, Grid, Card, Image, Message, Button, Form, Comment } from "semantic-ui-react";
+import { Segment, Grid, Card, Image, Button, Form, Comment } from "semantic-ui-react";
 
 // https://medium.com/@coderacademy/you-can-build-an-fb-messenger-style-chat-app-with-reactjs-heres-how-intermediate-211b523838ad
 
 
-class Login extends React.Component{
+/**
+ * The class which handles the entire chat app. 
+ */
+class ChatApp extends React.Component {
+
   constructor(props) {
     super(props);
-    this.state = {name:this.props.name,icon:"",chatname:this.props.chatname, message:true};
-    this.on_login = this.on_login.bind(this);
-    this.handleChange = this.handleChange.bind(this);
-  }
-  handleChange = (e) => this.setState({ [e.target.name]: e.target.value })
-  on_login(){  
-    if (this.state.name=== ""){
-      this.setState({message:false});
-      return;
-    }   
-    else if (this.state.chatname === ""){    
-      this.setState({message:false});
-      return; 
-    }   
-    else if (this.state.icon === ""){        
-      this.props.on_login(this.state.name, this.props.icon, this.state.chatname);
-    }
-    else{
-      this.props.on_login(this.state.name, this.state.icon, this.state.chatname);
-    }    
-  }
-  render(){
-    const { name, icon, chatname } = this.state;
-    return (
-      <div class="ui middle aligned center aligned grid">
-      <div class="column">
-      <h2 class="ui teal image header">
-      <div class="content">
-        Create your username and avatar
-      </div>
-    </h2>
-      <Form id ="loginscreen" onSubmit={this.on_login} >
-    <Form.Field>
-      <input placeholder='Name' name='name' value={name} onChange={this.handleChange} />
-    </Form.Field>
-    <Form.Field>
-      <input placeholder='Paste a link to your avatar. Otherwise will use the default' name='icon' value={icon} onChange={this.handleChange}/>
-    </Form.Field>
-    <Image src={this.state.icon} />
-    <Form.Field>
-      <input placeholder='Enter the chatname' name='chatname' value={chatname} onChange={this.handleChange}/>
-    </Form.Field>    
-    <Button large type='submit'  >Submit</Button>
-    </Form>
-    <Message hidden={this.state.message}>   
-    One or more of your fields is empty. Please check again!    
-  </Message>    
-      </div>
-    </div>
-    )
-  }
-}
-
-class ChatRoom extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = { messages: [], name:"",icon:"https://semantic-ui.com/images/avatar/large/daniel.jpg", chatname:"", loggedin: false};
-    this.send_message = this.send_message.bind(this);
-    this.login = this.login.bind(this);
-    this.add_message = this.add_message.bind(this);
-    this.logout = this.logout.bind(this);
+    this.state = { messageList: [], userName:"",avatar:"https://semantic-ui.com/images/avatar/large/daniel.jpg", chatroom:"", loggedin: false};
+    this.publishMessage = this.publishMessage.bind(this);
+    this.handleLogIn = this.handleLogIn.bind(this);
+    this.displayMessage = this.displayMessage.bind(this);
+    this.handleLogOut = this.handleLogOut.bind(this);
   }
 
-  // send a message to the server
-  send_message(message) {
-    const a_message = {};
-    a_message.clientTime = Date.now();
-    a_message.message = message;
-    a_message.iconUrl = this.state.icon;
-    const topic_to_send = "root/" + this.state.chatname + "/"+ this.state.name;
-    this.client.publish(topic_to_send, JSON.stringify(a_message));
+  /**
+   * Publish a message to the mqtt server and broadcast it to other clients
+   * @param {string} messageConent: the content of the message
+   */
+  publishMessage(messageConent) {
+    const aMessage = {};
+    aMessage.clientTime = Date.now();
+    aMessage.message = messageConent;
+    aMessage.iconUrl = this.state.avatar;
+    const mqttTopic = "root/" + this.state.chatroom + "/"+ this.state.userName;
+    this.client.publish(mqttTopic, JSON.stringify(aMessage));
  
   }
 
-  // add a message to the list of message
-  add_message(username, message) {   
-    if (username.split('/').pop() === this.state.name){
-      const messages = this.state.messages;
-      messages.push([username,message,true]); 
-      this.setState({messages:messages});
-    }
-    else{
-      const messages = this.state.messages;
-       messages.push([username,message,false]); 
-       this.setState({messages:messages});
-    }
+  /**
+   * display a message 
+   * @param {string} username owner of the message
+   * @param {string} message content of the message
+   */
+  displayMessage(username, message) {   
+    var self = username.split('/').pop() === this.state.userName? true: false;
+    const messages = this.state.messageList;
+    messages.push([username,message,self]); 
+    this.setState({messageList:messages});
   }
 
-  // Upon user login, connect to the mqtt client
-  login(yourname, youricon, yourchatname){
-    this.setState({name:yourname});
-    this.setState({icon:youricon});
-    this.setState({chatname:yourchatname});
+  /**
+   * Register the user and connect to the mqtt server
+   * @param {string} name the user name created
+   * @param {string} avatar the avatar to use
+   * @param {string} room the room to join
+   */
+  handleLogIn(name, avatar, room){
+    // register the user
+    this.setState({userName:name});
+    this.setState({avatar:avatar});
+    this.setState({chatroom:room});
+    // connect to mqtt server
     var mqtt = require('mqtt')
     var client  = mqtt.connect('ws://mqtt.bucknell.edu:9001')
     var parent = this;
     client.on('connect', function () {
-      client.subscribe("root/" + yourchatname + "/+");
-      console.log("root/" + yourchatname);
+      client.subscribe("root/" + room + "/+");
     })
     client.on('message', function (topic, message) {
-    // message is Buffer
-    const a_mess = message.toString();
-    parent.add_message(topic, JSON.parse(a_mess));
+    parent.displayMessage(topic, JSON.parse(message.toString()));
   })
+    // set the client and register as logged in
     this.client = client;
     this.setState({loggedin:true});
-    this.forceUpdate();
   }
 
-  logout (){
-    console.log("out");
-    this.setState({messages:[]});
+  /**
+   * When the client logs out from the chat room
+   */
+  handleLogOut (){
+    this.setState({messageList:[]});
     this.setState({loggedin:false});
-    this.client.unsubscribe("root/" + this.state.chatname + "/+");
-    this.forceUpdate();
+    this.client.unsubscribe("root/" + this.state.chatroom + "/+");
   }
 
-  // The render function
+  /**
+   * Render the view
+   */
   render() {
     if (this.state.loggedin === false){
       return (
@@ -136,7 +93,7 @@ class ChatRoom extends React.Component {
         <Grid.Column width={6}>
         </Grid.Column>
         <Grid.Column width={4}>
-        <Login on_login = {this.login} name = {this.state.name} icon = {this.state.icon} chatname = {this.state.chatname}/>
+        <LoginView onLoggedIn = {this.handleLogIn} userName = {this.state.userName} avatar = {this.state.avatar} chatroom = {this.state.chatroom}/>
         </Grid.Column>
           <Grid.Column width={6}>
           </Grid.Column>
@@ -144,17 +101,16 @@ class ChatRoom extends React.Component {
       )
     }
     else{
-      return (            
-      
+      return (                  
         <Grid>
          <Grid.Column width={3}>     
         </Grid.Column>
         <Grid.Column width={2}>
-          <User icon={this.state.icon} name = {this.state.name} chatname={this.state.chatname} on_logout={this.logout} />
+          <User icon={this.state.avatar} name = {this.state.userName} chatname={this.state.chatroom} on_logout={this.handleLogOut} />
         </Grid.Column>
         <Grid.Column width={8}>      
-          <Messages messages={this.state.messages} />
-          <ChatInput on_send={this.send_message} />
+          <Messages messages={this.state.messageList} />
+          <ChatInput on_send={this.publishMessage} />
           </Grid.Column>
           <Grid.Column width={3}>    
         </Grid.Column>
@@ -287,5 +243,5 @@ class ChatInput extends React.Component {
     );
   }
 }
-ReactDOM.render(<ChatRoom />, document.getElementById("root"));
+ReactDOM.render(<ChatApp />, document.getElementById("root"));
 registerServiceWorker();
