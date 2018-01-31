@@ -3,6 +3,7 @@
 body{
   overflow: hidden;
   margin-top: 2vh;
+  background-color: whitesmoke;
 }
 .grid{
   height: 98vh;
@@ -16,7 +17,6 @@ body{
 #chatbox{
   margin: auto;
   padding: 0;
-  background-color: white;
   width: 45vw;
   height: 100vh; 
   overflow-y: hidden;
@@ -28,13 +28,18 @@ body{
   height: 87vh;
   max-height: 87vh;
   overflow-y: auto;
-  background-color: white;
 }
 
 .self{
-  background-color: rgba(0, 200, 100, 0.3);
   padding: 1px;
-  border-radius: 5px;
+  margin: 0px;
+  background-color: rgba(0,0,255,0.1);
+}
+
+.other{
+  padding: 1px;
+  margin: 0px;
+  /* background-color: lightgray; */
 }
 
 

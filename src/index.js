@@ -34,8 +34,15 @@ class ChatApp extends React.Component {
     aMessage.clientTime = Date.now();
     aMessage.message = messageConent;
     aMessage.iconUrl = this.state.avatar;
-    const mqttTopic = "root/" + this.state.chatroom + "/"+ this.state.userName;
-    this.client.publish(mqttTopic, JSON.stringify(aMessage));
+ 
+    if (this.state.chatroom !== "+"){
+      const mqttTopic = "root/" + this.state.chatroom + "/"+ this.state.userName;
+      this.client.publish(mqttTopic, JSON.stringify(aMessage));
+    }
+    else{
+      const mqttTopic = "root/"+ this.state.userName;
+      this.client.publish(mqttTopic, JSON.stringify(aMessage));
+    }
   }
 
   /**
@@ -66,7 +73,12 @@ class ChatApp extends React.Component {
     var client  = mqtt.connect('ws://mqtt.bucknell.edu:9001')
     var parent = this;
     client.on('connect', function () {
-      client.subscribe("root/" + room + "/+");
+      if (room !== "+"){
+        client.subscribe("root/" + room + "/+");
+      }
+      else{
+        client.subscribe("root/#");
+      }
     })
     client.on('message', function (topic, message) {
     parent.displayMessage(topic, JSON.parse(message.toString()));
@@ -82,7 +94,13 @@ class ChatApp extends React.Component {
   handleLogOut (){
     this.setState({messageList:[]});
     this.setState({loggedin:false});
-    this.client.unsubscribe("root/" + this.state.chatroom + "/+");
+    if (this.state.chatroom !== "+"){
+      this.client.unsubscribe( "root/" + this.state.chatroom + "/+");
+    }
+    else{
+      this.client.unsubscribe("root/#");
+    }
+
   }
 
   /**

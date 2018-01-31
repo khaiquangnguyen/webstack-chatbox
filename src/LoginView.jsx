@@ -1,5 +1,5 @@
 import React from "react";
-import {Image, Message, Button, Form} from "semantic-ui-react";
+import { Image, Message, Button, Form } from "semantic-ui-react";
 
 export default class LoginView extends React.Component {
 
@@ -32,25 +32,25 @@ export default class LoginView extends React.Component {
   render() {
     const { userName, avatar, chatroom } = this.state;
     return (
-      <div class="ui middle aligned center aligned grid">
-        <div class="column">
-          <h2 class="ui teal image header">
-            <div class="content">
-              Create your useruserName and avatar
+      <div className="ui middle aligned center aligned grid">
+        <div className="column">
+          <h2 className="ui teal huge header">
+            <div className="content">
+              Join the coolest chatroom ever!
         </div>
           </h2>
           <Form id="loginscreen" onSubmit={this.handleSubmit} >
             <Form.Field>
-              <input placeholder='userName' name='userName' value={userName} onChange={this.handleChange} />
+              <input placeholder='Enter your awesome name' name='userName' value={userName} onChange={this.handleChange} />
             </Form.Field>
             <Form.Field>
-              <input placeholder='Paste a link to your avatar. Otherwise will use the default' name='avatar' value={avatar} onChange={this.handleChange} />
+              <input placeholder='Paste the link to your chosen avatar here' name='avatar' value={avatar} onChange={this.handleChange} />
             </Form.Field>
             <Image src={this.state.avatar} />
             <Form.Field>
-              <input placeholder='Enter the chatroom' name='chatroom' value={chatroom} onChange={this.handleChange} />
-            </Form.Field>
-            <Button large type='submit'  >Submit</Button>
+              <input placeholder='Enter the name of the chatroom. Enter + to enter all rooms!' name='chatroom' value={chatroom} onChange={this.handleChange} />
+            </Form.Field>.
+            <Button size='large' type='submit'  >Submit</Button>
           </Form>
           <Message hidden={this.state.message}>
             One or more of your fields is empty. Please check again!

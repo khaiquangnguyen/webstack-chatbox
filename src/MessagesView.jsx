@@ -38,9 +38,9 @@ export default class MessagesView extends React.Component {
 class AMessage extends React.Component {
     render() {
         var moment = require('moment');
-        const date = moment(this.props.clientTime).format('MMMM Do YYYY, h:mm:ss a');
+        const date = moment(this.props.clientTime).format('MM/DD/YY, h:mm:ss a');
         const un = this.props.username.split('/').pop();
-        const self = this.props.self ? "self" : "";
+        const self = this.props.self ? "self" : "other";
         console.log(this.props.self);
         return (
             <div className={self}>
